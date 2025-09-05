@@ -58,7 +58,7 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
 
 <table>
   <tr>
-    <td align="center"><sub><b>Eduardo Américo</b></sub><br/><a href="mailto:"> </a></td>
+    <td align="center"><sub><b>Eduardo Américo Bezerra da Silva</b></sub><br/><a href="mailto:eabs2@cesar.school">eabs2@cesar.school</a></td>
     <td align="center"><sub><b>Henrique Neves Pontual</b></sub><br/><a href="mailto:hnp@cesar.school">hnp@cesar.school</a></td>
     <td align="center"><sub><b>João Vítor do Sacramento Bezerra da Cunha Costa</b></sub><br/><a href="mailto:jvsbcc@cesar.school">jvsbcc@cesar.school</a></td>
     <td align="center"><sub><b>Luiz Gustavo Gonçalves da Silva</b></sub><br/><a href="mailto:lggs@cesar.school">lggs@cesar.school</a></td>
