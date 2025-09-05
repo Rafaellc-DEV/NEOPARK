@@ -10,44 +10,13 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
 
 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
 
-<a href="https://link.exemplo">
-  <img src="https://img.shields.io/badge/Deploy_Azure-008080?style=for-the-badge&logo=microsoftazure&logoColor=white" alt="Deploy Azure"/>
-</a>
 
-<a href="https://link.exemplo">
+<a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">
   <img src="https://img.shields.io/badge/Histórias-483D8B?style=for-the-badge&logo=google&logoColor=white" alt="Histórias Usuário"/>
 </a>
 
 <a href="https://link.exemplo">
   <img src="https://img.shields.io/badge/Figma-FF7262?style=for-the-badge&logo=figma&logoColor=white" alt="Protótipos"/>
-</a>
-
-<a href="https://link.exemplo">
-  <img src="https://img.shields.io/badge/Google_Sites-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google Sites"/>
-</a>
-
-<a href="https://link.exemplo">
-  <img src="https://img.shields.io/badge/Google_Drive-F4B400?style=for-the-badge&logo=google&logoColor=white" alt="Pasta Compartilhada"/>
-</a>
-
-<a href="https://link.exemplo">
-  <img src="https://img.shields.io/badge/Apresentação Slides-8A2BE2?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="Apresentação"/>
-</a>
-
-<a href="https://link.exemplo">
-  <img src="https://img.shields.io/badge/Miro-FFD700?style=for-the-badge&logo=miro&logoColor=black" alt="Miro Board"/>
-</a>
-
-<a href="https://link.exemplo">
-  <img src="https://img.shields.io/badge/Screencast Usuário-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
-</a>
-
-<a href="https://link.exemplo">
-  <img src="https://img.shields.io/badge/Screencast Gestor-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
-</a>
-
-<a href="https://link.exemplo">
-  <img src="https://img.shields.io/badge/Screencast Testes-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
 </a>
 
 </div>
@@ -73,6 +42,10 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
 <details>
   <summary>🚀 Entrega 1</summary>
   <br/>
+  <a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">📄 Histórias dos Usuários</a><br/><br/>
+  <a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">📱 Protótipo Lo-Fi</a><br/><br/>
+  <a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">▶️ Screencast</a>
+  
 </details>
 
 <details>
