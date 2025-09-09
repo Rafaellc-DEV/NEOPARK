@@ -2,7 +2,7 @@
 
 **NEOPARK** é um Sistema de gestão de estacionamento projetado para resolver os problemas de processos manuais, como o controle impreciso de veículos e pagamentos, que são comuns em estacionamentos sem automação.  
 
-A aplicação web será acessada exclusivamente por um operador, que fará login para gerenciar o fluxo de veículos, os mensalistas, os pagamentos e a emissão de relatórios. O sistema centraliza todas as operações em uma interface simples e intuitiva, com o objetivo de aumentar a eficiência e a lucratividade do estacionamento.
+A aplicação web será acessada exclusivamente por um operador, que fará login para gerenciar o fluxo dos veículos, dos mensalistas, dos pagamentos e a emissão de relatórios. O sistema centraliza todas as operações em uma interface simples e intuitiva, com o objetivo de aumentar a eficiência e a lucratividade do estacionamento.
 
 ---
 
