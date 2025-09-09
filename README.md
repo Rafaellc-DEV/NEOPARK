@@ -15,7 +15,7 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
   <img src="https://img.shields.io/badge/Histórias-483D8B?style=for-the-badge&logo=google&logoColor=white" alt="Histórias Usuário"/>
 </a>
 
-<a href="https://link.exemplo">
+<a href="https://www.figma.com/proto/lRTsRpX5MEwIVhTkrStATo/NEOPARK-prototipo?node-id=1-2&p=f&t=u5YNNLJgjQhw2ntc-1&scaling=scale-down&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=1%3A2">
   <img src="https://img.shields.io/badge/Figma-FF7262?style=for-the-badge&logo=figma&logoColor=white" alt="Protótipos"/>
 </a>
 
@@ -42,10 +42,20 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
 <details>
   <summary>🚀 Entrega 1</summary>
   <br/>
-  <a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">📄 Histórias dos Usuários</a><br/><br/>
-  <a href="https://www.figma.com/proto/lRTsRpX5MEwIVhTkrStATo/NEOPARK-prototipo?node-id=1-2&p=f&t=u5YNNLJgjQhw2ntc-1&scaling=scale-down&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=1%3A2">📱 Protótipo Lo-Fi</a><br/><br/>
-  <a href="https://youtu.be/MAJ7fX3DylY">▶️ Screencast</a>
-  
+
+  ### 📄 Figma
+  ![Quadro Jira](prints/figma.png)
+
+  <p align="center">
+  <a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">
+    <img src="https://img.shields.io/badge/Histórias-483D8B?style=for-the-badge&logo=google&logoColor=white" alt="Histórias Usuário"/></a> 
+  <a href="https://www.figma.com/proto/lRTsRpX5MEwIVhTkrStATo/NEOPARK-prototipo?node-id=1-2&p=f&t=u5YNNLJgjQhw2ntc-1&scaling=scale-down&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=1%3A2">
+    <img src="https://img.shields.io/badge/Figma-FF7262?style=for-the-badge&logo=figma&logoColor=white" alt="Protótipos"/>
+  <a href="https://youtu.be/MAJ7fX3DylY">
+    <img src="https://img.shields.io/badge/Screencast-b50404?style=for-the-badge&logo=youtube&logoColor=white"/></a>
+</p>
+<br/>
+
 </details>
 
 <details>
