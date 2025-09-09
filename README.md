@@ -43,8 +43,8 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
   <summary>🚀 Entrega 1</summary>
   <br/>
   <a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">📄 Histórias dos Usuários</a><br/><br/>
-  <a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">📱 Protótipo Lo-Fi</a><br/><br/>
-  <a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">▶️ Screencast</a>
+  <a href="https://www.figma.com/proto/lRTsRpX5MEwIVhTkrStATo/NEOPARK-prototipo?node-id=1-2&p=f&t=u5YNNLJgjQhw2ntc-1&scaling=scale-down&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=1%3A2">📱 Protótipo Lo-Fi</a><br/><br/>
+  <a href="https://youtu.be/MAJ7fX3DylY">▶️ Screencast</a>
   
 </details>
 
