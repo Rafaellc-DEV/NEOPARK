@@ -80,3 +80,4 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
 ## 💡 Observações
 
 > Projeto desenvolvido na disciplina de **POO (Programação Orientada a Objetos) – 2025.2** na CESAR School.
+
