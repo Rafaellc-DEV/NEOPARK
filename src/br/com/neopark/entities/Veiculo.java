@@ -1,4 +1,4 @@
-package entities;
+package br.com.neopark.entities;
 
 public class Veiculo {
 
