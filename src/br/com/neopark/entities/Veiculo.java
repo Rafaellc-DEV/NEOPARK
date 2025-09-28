@@ -81,7 +81,7 @@ public class Veiculo {
     }
 
     @Override
-    public int hashcode() {
+    public int hashCode() {
         return Objects.hash(id);
     }
 }
