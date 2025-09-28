@@ -1,27 +1,28 @@
 package br.com.neopark.entities;
+
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.Objects;
-
+    
 @Entity
 @Table(name = "veiculos")
 public class Veiculo {
 
-
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "placa", nullable = false, lenght = 10, unique = true)
+    @Column(name = "placa", nullable = false, length = 10, unique = true)
     private String placa;
 
-    @Column(name = "tipo", lenght = 50)
+    @Column(name = "tipo", length = 50)
     private String tipo;
-
-     @Column(name = "modelo", lenght = 100)
+    
+    @Column(name = "modelo", length = 100)
     private String modelo;
 
-    @Column(name = "cor", lenght = 30)
+    @Column(name = "cor", length = 30)
     private String cor;
 
     @Column(name = "mensalista", nullable = false)
@@ -49,7 +50,7 @@ public class Veiculo {
     public String getTipo() { return tipo; }
     public String getModelo() { return modelo; }
     public String getCor() { return cor; }
-    public String getmensalista() { return mensalista;}
+    public Boolean getMensalista() { return mensalista;}
 
     public void setId(Long id) {this.id = id;}
     public void setPlaca(String placa) { this.placa = placa; }
@@ -72,6 +73,16 @@ public class Veiculo {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Veiculo)) return false;
+        Veiculo veiculo = (Veiculo) o;
+        return Objects.equals(id, veiculo.id);
+    }
 
+    @Override
+    public int hashcode() {
+        return Objects.hash(id);
+    }
 }
 
