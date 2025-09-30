@@ -15,11 +15,15 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
 </a>
 
 <a href="https://www.figma.com/design/lRTsRpX5MEwIVhTkrStATo/NEOPARK-prototipo?node-id=0-1&t=NFyyuHbeoktbyllA-1">
-  <img src="https://img.shields.io/badge/Figma-FF7262?style=for-the-badge&logo=figma&logoColor=white" alt="Protótipos"/>
+  <img src="https://img.shields.io/badge/Figma-FF7262?style=for-the-badge&logo=figma&logoColor=white" alt="Protótipo"/>
 </a>
 
 <a href="https://youtu.be/MAJ7fX3DylY">
-    <img src="https://img.shields.io/badge/Screencast-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
+    <img src="https://img.shields.io/badge/Screencast LowFi-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
+</a>
+
+<a href="https://www.youtube.com/watch?v=vv4w6TWWkzQ&feature=youtu.be">
+    <img src="https://img.shields.io/badge/Screencast Foco 2 histórias-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
 </a>
 </div>
 
@@ -58,11 +62,23 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
     <img src="https://img.shields.io/badge/Screencast-b50404?style=for-the-badge&logo=youtube&logoColor=white"/></a>
 </p>
 <br/>
-
 </details>
 
 <details>
   <summary>🚀 Entrega 2</summary>
+  <br/>
+
+<p align="center">
+  <a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">
+    <img src="https://img.shields.io/badge/Histórias-483D8B?style=for-the-badge&logo=google&logoColor=white" alt="Histórias Usuário"/></a> 
+    
+  <a href="https://www.youtube.com/watch?v=vv4w6TWWkzQ&feature=youtu.be">
+    <img src="https://img.shields.io/badge/Screencast Foco 2 histórias-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
+</a>
+</p>
+
+  ### 📄 Issues
+  ![Issues](prints/issues_entrega02.png)
   <br/>
 </details>
 
