@@ -36,7 +36,8 @@ public class EstacionamentoApplication implements CommandLineRunner {
 │ 1) Registrar ENTRADA (avulso)        │
 │ 2) Registrar ENTRADA (mensalista)    │
 │ 3) Registrar SAÍDA (avulso)          │
-│ 4) Listar ESTACIONADOS               │
+│ 4) Listar ESTACIONADOS 
+  5)Buscar veículo por placa│
 │ 0) Sair                              │
 └──────────────────────────────────────┘""");
             System.out.print("> Selecione uma opção: ");
@@ -112,6 +113,25 @@ public class EstacionamentoApplication implements CommandLineRunner {
                             lista.forEach(System.out::println);
                         }
                     }
+                    case "5" -> {
+                        System.out.print("Digite a placa do veículo: ");
+                        String placaBusca = sc.nextLine().trim();
+                        var veiculoOpt = service.buscarPorPlaca(placaBusca);
+                        if (veiculoOpt.isPresent()) {
+                            var v = veiculoOpt.get();
+                            System.out.println("✅ Veículo encontrado:");
+                            System.out.println("Placa: " + v.getPlaca());
+                            System.out.println("Tipo: " + v.getTipo());
+                            System.out.println("Modelo: " + v.getModelo());
+                            System.out.println("Cor: " + v.getCor());
+                            System.out.println("Entrada: " + v.getDataEntrada());
+                            System.out.println("Mensalista: informação indisponível");
+
+                        } else {
+                            System.out.println("❌ Veículo não encontrado no estacionamento.");
+                        }
+                    }
+
                     case "0" -> {
                         loop = false;
                         System.out.println("Encerrando...");
