@@ -2,6 +2,7 @@ package br.com.neopark.services;
 
 import br.com.neopark.entities.RegistroSaida;
 import br.com.neopark.entities.Veiculo;
+import br.com.neopark.entities.Tarifa;
 import br.com.neopark.repositories.RegistroSaidaRepository;
 import br.com.neopark.repositories.VeiculoRepository;
 import org.springframework.stereotype.Service;
@@ -19,13 +20,14 @@ public class EstacionamentoService {
 
     private final VeiculoRepository veiculoRepo;
     private final RegistroSaidaRepository saidaRepo;
+    private final TarifaService tarifaService;
 
-    // Tarifa por hora (pode ser carregado de properties)
-    private final BigDecimal TARIFA_HORA = new BigDecimal("10.00");
-
-    public EstacionamentoService(VeiculoRepository veiculoRepo, RegistroSaidaRepository saidaRepo) {
+    public EstacionamentoService(VeiculoRepository veiculoRepo,
+                                 RegistroSaidaRepository saidaRepo,
+                                 TarifaService tarifaService) {
         this.veiculoRepo = veiculoRepo;
         this.saidaRepo = saidaRepo;
+        this.tarifaService = tarifaService;
     }
 
     @Transactional
@@ -55,25 +57,35 @@ public class EstacionamentoService {
         if (placa == null || placa.isBlank()) {
             throw new IllegalArgumentException("Placa é obrigatória");
         }
+
         Veiculo v = veiculoRepo.findByPlaca(placa.trim().toUpperCase())
                 .orElseThrow(() -> new IllegalArgumentException("Veículo não encontrado"));
-
-        if (Boolean.TRUE.equals(v.getMensalista())) {
-            // Mensalista: não há cobrança avulsa; apenas registra histórico e remove
-            veiculoRepo.delete(v);
-            saidaRepo.save(new RegistroSaida(v.getPlaca(), v.getDataEntrada(), LocalDateTime.now(), BigDecimal.ZERO));
-            return BigDecimal.ZERO;
-        }
 
         LocalDateTime agora = LocalDateTime.now();
         long minutos = Duration.between(v.getDataEntrada(), agora).toMinutes();
         long horasCobradas = Math.max(1, (minutos + 59) / 60); // hora iniciada arredonda para cima
-        BigDecimal valor = TARIFA_HORA.multiply(BigDecimal.valueOf(horasCobradas))
-                .setScale(2, RoundingMode.HALF_UP);
+
+        // Tarifa vigente (cria padrão se não existir)
+        Tarifa tarifa = tarifaService.obterOuCriarPadrao();
+        BigDecimal valorHora = tarifa.getValorHora();
+
+        BigDecimal valor = valorHora.multiply(BigDecimal.valueOf(horasCobradas));
+
+        // Se for mensalista, aplica desconto configurado (0–100%)
+        if (Boolean.TRUE.equals(v.getMensalista())) {
+            BigDecimal descontoPct = tarifa.getDescontoMensalista(); // ex.: 20 => 20%
+            if (descontoPct != null && descontoPct.signum() > 0) {
+                BigDecimal fator = BigDecimal.ONE.subtract(descontoPct.movePointLeft(2)); // 20 => 0.80
+                valor = valor.multiply(fator);
+            }
+        }
+
+        valor = valor.setScale(2, RoundingMode.HALF_UP);
 
         // Persistir histórico e remover veículo dos estacionados
         saidaRepo.save(new RegistroSaida(v.getPlaca(), v.getDataEntrada(), agora, valor));
         veiculoRepo.delete(v);
+
         return valor;
     }
 

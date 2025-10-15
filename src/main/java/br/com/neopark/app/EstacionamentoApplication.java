@@ -1,7 +1,9 @@
 package br.com.neopark.app;
 
-import br.com.neopark.services.EstacionamentoService;
+import br.com.neopark.entities.Tarifa;
 import br.com.neopark.entities.Veiculo;
+import br.com.neopark.services.EstacionamentoService;
+import br.com.neopark.services.TarifaService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -10,6 +12,9 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Scanner;
 
 @SpringBootApplication(scanBasePackages = "br.com.neopark")
@@ -20,26 +25,33 @@ public class EstacionamentoApplication implements CommandLineRunner {
     @Autowired
     private EstacionamentoService service;
 
+    @Autowired
+    private TarifaService tarifaService;
+
     public static void main(String[] args) {
         SpringApplication.run(EstacionamentoApplication.class, args);
     }
 
     @Override
     public void run(String... args) {
+        // Garante uma tarifa padrão na primeira execução (ex.: R$ 8,00/h e 0% de desconto)
+        tarifaService.obterOuCriarPadrao();
+
         Scanner sc = new Scanner(System.in);
         boolean loop = true;
         while (loop) {
             System.out.println("""
-┌──────────────────────────────────────┐
-│           NEO PARK — MENU            │
-├──────────────────────────────────────┤
-│ 1) Registrar ENTRADA (avulso)        │
-│ 2) Registrar ENTRADA (mensalista)    │
-│ 3) Registrar SAÍDA (avulso)          │
-│ 4) Listar ESTACIONADOS 
-  5)Buscar veículo por placa│
-│ 0) Sair                              │
-└──────────────────────────────────────┘""");
+┌──────────────────────────────────────────────┐
+│               NEO PARK — MENU               │
+├──────────────────────────────────────────────┤
+│ 1) Registrar ENTRADA (avulso)               │
+│ 2) Registrar ENTRADA (mensalista)           │
+│ 3) Registrar SAÍDA (avulso)                 │
+│ 4) Listar ESTACIONADOS                      │
+│ 5) Buscar VEÍCULO por PLACA                 │
+│ 6) Gerenciar TARIFAS                        │
+│ 0) Sair                                     │
+└──────────────────────────────────────────────┘""");
             System.out.print("> Selecione uma opção: ");
             String op = sc.nextLine().trim();
 
@@ -73,7 +85,6 @@ public class EstacionamentoApplication implements CommandLineRunner {
                         System.out.print("Placa para saída (avulso): ");
                         String placa = sc.nextLine().trim();
 
-                        // Busca o veículo
                         var veiculoOpt = service.buscarPorPlaca(placa);
                         if (veiculoOpt.isEmpty()) {
                             System.out.println("❌ Veículo não encontrado.");
@@ -81,29 +92,40 @@ public class EstacionamentoApplication implements CommandLineRunner {
                         }
                         var v = veiculoOpt.get();
 
-                        // Calcula a prévia (sem remover ainda)
-                        var agora = java.time.LocalDateTime.now();
-                        long minutos = java.time.Duration.between(v.getDataEntrada(), agora).toMinutes();
+                        // Prévia do valor com base na tarifa vigente
+                        LocalDateTime agora = LocalDateTime.now();
+                        long minutos = Duration.between(v.getDataEntrada(), agora).toMinutes();
                         long horas = Math.max(1, (minutos + 59) / 60);
-                        java.math.BigDecimal valor = new java.math.BigDecimal("10.00")
-                                .multiply(java.math.BigDecimal.valueOf(horas));
 
-                        // Mostra detalhes
+                        Tarifa tarifa = tarifaService.obterOuCriarPadrao();
+                        BigDecimal valor = tarifa.getValorHora().multiply(BigDecimal.valueOf(horas));
+
+                        if (Boolean.TRUE.equals(v.getMensalista())) {
+                            BigDecimal descontoPct = tarifa.getDescontoMensalista(); // 0..100
+                            if (descontoPct != null && descontoPct.signum() > 0) {
+                                BigDecimal fator = BigDecimal.ONE.subtract(descontoPct.movePointLeft(2));
+                                valor = valor.multiply(fator);
+                            }
+                        }
+                        valor = valor.setScale(2, RoundingMode.HALF_UP);
+
                         System.out.println("=== Resumo da saída ===");
                         System.out.println("Placa: " + v.getPlaca());
                         System.out.println("Entrada: " + v.getDataEntrada());
                         System.out.println("Saída:   " + agora);
-                        System.out.println("Valor devido: R$ " + valor);
+                        System.out.println("Mensalista: " + (Boolean.TRUE.equals(v.getMensalista()) ? "Sim" : "Não"));
+                        System.out.println("Tarifa/hora vigente: R$ " + tarifa.getValorHora()
+                                + " | Desconto mensalista: " + tarifa.getDescontoMensalista() + "%");
+                        System.out.println("Valor devido (prévia): R$ " + valor);
 
-                        // Pede confirmação
                         System.out.print("Pressione ENTER para confirmar pagamento... ");
                         sc.nextLine();
 
-                        // Agora registra de fato no serviço (remove e salva histórico)
+                        // Registra de fato no serviço (remove e salva histórico)
                         valor = service.registrarSaidaAvulso(placa);
                         System.out.println("✅ Pagamento confirmado. Veículo removido.");
+                        System.out.println("Valor cobrado: R$ " + valor);
                     }
-
                     case "4" -> {
                         var lista = service.listarEstacionados();
                         if (lista.isEmpty()) {
@@ -125,13 +147,13 @@ public class EstacionamentoApplication implements CommandLineRunner {
                             System.out.println("Modelo: " + v.getModelo());
                             System.out.println("Cor: " + v.getCor());
                             System.out.println("Entrada: " + v.getDataEntrada());
-                            System.out.println("Mensalista: informação indisponível");
-
+                            System.out.println("Mensalista: " + (Boolean.TRUE.equals(v.getMensalista()) ? "Sim" : "Não"));
                         } else {
                             System.out.println("❌ Veículo não encontrado no estacionamento.");
                         }
                     }
-
+                    case "6" -> gerenciarTarifas(sc)
+                    ;
                     case "0" -> {
                         loop = false;
                         System.out.println("Encerrando...");
@@ -143,6 +165,35 @@ public class EstacionamentoApplication implements CommandLineRunner {
             } catch (Exception e) {
                 System.out.println("❌ Erro inesperado: " + e.getMessage());
             }
+        }
+    }
+
+    /** Opção de menu para HU11 – Gerenciar Tarifas do Estacionamento. */
+    private void gerenciarTarifas(Scanner scanner) {
+        try {
+            Tarifa atual = tarifaService.obterOuCriarPadrao();
+            System.out.println("\n=== GERENCIAR TARIFAS ===");
+            System.out.println("Tarifa/hora atual: R$ " + atual.getValorHora());
+            System.out.println("Desconto mensalista atual: " + atual.getDescontoMensalista() + "%");
+
+            System.out.print("Novo valor/hora (R$): ");
+            String inValor = scanner.nextLine().trim().replace(",", ".");
+            BigDecimal novoValorHora = new BigDecimal(inValor);
+
+            System.out.print("Novo desconto para mensalista (% 0–100): ");
+            String inDesc = scanner.nextLine().trim().replace(",", ".");
+            BigDecimal novoDesconto = new BigDecimal(inDesc);
+
+            // Atualiza com validações (cenário desfavorável cobre zero/negativo)
+            tarifaService.atualizar(novoValorHora, novoDesconto);
+
+            System.out.println("✅ Tarifas atualizadas com sucesso e já aplicadas aos mensalistas.");
+        } catch (IllegalArgumentException ex) {
+            // Cenário Desfavorável: mensagem exigida pela história
+            System.out.println("❌ " + ex.getMessage());
+            System.out.println("Nada foi persistido.");
+        } catch (Exception e) {
+            System.out.println("❌ Erro inesperado ao salvar tarifas: " + e.getMessage());
         }
     }
 }
