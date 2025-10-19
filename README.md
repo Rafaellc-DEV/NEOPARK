@@ -26,6 +26,10 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
 <a href="https://www.youtube.com/watch?v=vv4w6TWWkzQ&feature=youtu.be">
     <img src="https://img.shields.io/badge/Screencast Foco 2 histórias-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
 </a>
+
+<a href="https://youtu.be/ySxR4ZK4Imc&feature=youtu.be">
+    <img src="https://img.shields.io/badge/Screencast Entrega 3 com novas histórias-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
+</a>
 </div>
 
 ---
