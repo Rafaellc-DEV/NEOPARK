@@ -93,7 +93,25 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
 
 <details>
   <summary>🚀 Entrega 3</summary>
-  <br/>
+
+---
+
+<p align="center">
+  <a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">
+    <img src="https://img.shields.io/badge/Histórias-483D8B?style=for-the-badge&logo=google&logoColor=white" alt="Histórias Usuário"/>
+  </a> 
+  <a href="https://youtu.be/ySxR4ZK4Imc?feature=youtu.be">
+    <img src="https://img.shields.io/badge/Screencast Entrega 3 com novas histórias-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
+  </a>
+  <a href="https://youtu.be/Cb5uj4P6_xw">
+    <img src="https://img.shields.io/badge/Screencast Testes Automatizados Entrega 3-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
+  </a>
+</p>
+
+### 📄 Issues
+![Issues](prints/issues_entrega03.png)
+
+<br/>
 </details>
 
 <details>
