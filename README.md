@@ -32,6 +32,11 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
 </a>
 </div>
 
+<a href="https://youtu.be/Cb5uj4P6_xw">
+    <img src="https://img.shields.io/badge/Screencast Testes Automatizados Entrega 3-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
+</a>
+</div>
+
 ---
 
 ## 👥 Equipe
