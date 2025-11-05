@@ -15,4 +15,9 @@ public interface MensalistaRepository extends JpaRepository<Mensalista, Long> {
      * Busca um mensalista pela placa principal (útil na integração com EstacionamentoService).
      */
     Optional<Mensalista> findByPlacaPrincipal(String placa);
+
+    /**
+     * Busca um mensalista pelo CPF (único), ideal para usar no cadastro.
+     */
+    Optional<Mensalista> findByCpf(String cpf);
 }

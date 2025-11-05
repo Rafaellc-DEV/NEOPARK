@@ -1,5 +1,6 @@
 package br.com.neopark.app;
 
+import br.com.neopark.entities.Mensalista;
 import br.com.neopark.entities.Tarifa;
 import br.com.neopark.entities.Veiculo;
 import br.com.neopark.services.EstacionamentoService;
@@ -16,6 +17,7 @@ import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Scanner;
+import br.com.neopark.services.MensalistaService;
 
 @SpringBootApplication(scanBasePackages = "br.com.neopark")
 @EntityScan(basePackages = "br.com.neopark.entities")
@@ -27,6 +29,9 @@ public class EstacionamentoApplication implements CommandLineRunner {
 
     @Autowired
     private TarifaService tarifaService;
+
+    @Autowired
+    private MensalistaService mensalistaService;
 
     public static void main(String[] args) {
         SpringApplication.run(EstacionamentoApplication.class, args);
@@ -41,17 +46,18 @@ public class EstacionamentoApplication implements CommandLineRunner {
         boolean loop = true;
         while (loop) {
             System.out.println("""
-┌──────────────────────────────────────────────┐
-│               NEO PARK — MENU               │
-├──────────────────────────────────────────────┤
-│ 1) Registrar ENTRADA (avulso)               │
-│ 2) Registrar ENTRADA (mensalista)           │
-│ 3) Registrar SAÍDA (avulso)                 │
-│ 4) Listar ESTACIONADOS                      │
-│ 5) Buscar VEÍCULO por PLACA                 │
-│ 6) Gerenciar TARIFAS                        │
-│ 0) Sair                                     │
-└──────────────────────────────────────────────┘""");
+    ┌──────────────────────────────────────────────┐
+    │               NEO PARK — MENU                │
+    ├──────────────────────────────────────────────┤
+    │ 1) Registrar ENTRADA (avulso)                │
+    │ 2) Registrar ENTRADA (mensalista)            │
+    │ 3) Registrar SAÍDA (avulso)                  │
+    │ 4) Listar ESTACIONADOS                       │
+    │ 5) Buscar VEÍCULO por PLACA                  │
+    │ 6) Gerenciar TARIFAS                         |  
+    | 7) Gerenciar Mensalistas                     │
+    │ 0) Sair                                      │
+    └──────────────────────────────────────────────┘""");
             System.out.print("> Selecione uma opção: ");
             String op = sc.nextLine().trim();
 
@@ -154,6 +160,9 @@ public class EstacionamentoApplication implements CommandLineRunner {
                     }
                     case "6" -> gerenciarTarifas(sc)
                     ;
+
+                    case "7" -> gerenciarMensalistas(sc);
+
                     case "0" -> {
                         loop = false;
                         System.out.println("Encerrando...");
@@ -196,4 +205,48 @@ public class EstacionamentoApplication implements CommandLineRunner {
             System.out.println("❌ Erro inesperado ao salvar tarifas: " + e.getMessage());
         }
     }
+
+    private void gerenciarMensalistas(Scanner sc) {
+    System.out.println("\n=== GERENCIAR MENSALISTAS ===");
+    System.out.println("1) Cadastrar Novo Mensalista");
+    System.out.println("2) Registrar Pagamento de Mensalidade");
+    System.out.println("0) Voltar ao Menu Principal");
+    System.out.print("> Selecione uma opção: ");
+    String op = sc.nextLine().trim();
+
+    try {
+        switch (op) {
+            case "1" -> {
+                System.out.print("Nome do novo mensalista: ");
+                String nome = sc.nextLine().trim();
+                System.out.print("CPF: ");
+                String cpf = sc.nextLine().trim();
+                System.out.print("Telefone: ");
+                String telefone = sc.nextLine().trim();
+                System.out.print("Placa Principal (ex: ABC-1234): ");
+                String placa = sc.nextLine().trim();
+                
+                Mensalista novo = mensalistaService.cadastrarMensalista(nome, cpf, telefone, placa);
+                System.out.println("✅ Mensalista cadastrado com sucesso! ID: " + novo.getId());
+                System.out.println("   Primeiro vencimento em: " + novo.getDataVencimento());
+            }
+            case "2" -> {
+                System.out.print("Nome do mensalista para registrar pagamento: ");
+                String nome = sc.nextLine().trim();
+                
+                String status = mensalistaService.registrarPagamento(nome);
+                System.out.println("✅ Situação do pagamento: " + status);
+            }
+            case "0" -> {
+                System.out.println("Voltando ao menu principal...");
+            } // Não faz nada, apenas volta
+            default -> System.out.println("Opção inválida.");
+        }
+    } catch (IllegalArgumentException e) {
+        // Captura os erros de validação do Service
+        System.out.println("❌ Erro: " + e.getMessage());
+    } catch (Exception e) {
+        System.out.println("❌ Erro inesperado: " + e.getMessage());
+    }
+}
 }

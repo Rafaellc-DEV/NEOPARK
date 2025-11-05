@@ -29,14 +29,22 @@ public class Mensalista {
     @Column(precision = 10, scale = 2)
     private BigDecimal valorMensalidade; // Valor fixo da mensalidade
 
+    @Column(name = "cpf", nullable = false, unique = true)
+    private String cpf;
+
+    @Column(name = "telefone")
+    private String telefone;
+
     // Construtores
     public Mensalista() {}
 
-    public Mensalista(String nome, String placaPrincipal, LocalDate dataVencimento, BigDecimal valorMensalidade) {
+    public Mensalista(String nome, String placaPrincipal, LocalDate dataVencimento, BigDecimal valorMensalidade, String cpf, String telefone) {
         this.nome = nome;
         this.placaPrincipal = placaPrincipal;
         this.dataVencimento = dataVencimento;
         this.valorMensalidade = valorMensalidade;
+        this.cpf = cpf;
+        this.telefone = telefone;
         this.atualizarStatusBaseadoNaData();
     }
 
@@ -64,6 +72,11 @@ public class Mensalista {
     public void setStatusPagamento(StatusPagamento statusPagamento) { this.statusPagamento = statusPagamento; }
     public BigDecimal getValorMensalidade() { return valorMensalidade; }
     public void setValorMensalidade(BigDecimal valorMensalidade) { this.valorMensalidade = valorMensalidade; }
+    public String getCpf() {return cpf;}
+    public void setCpf(String cpf) {this.cpf = cpf;}
+    public String getTelefone() {return telefone;}
+    public void setTelefone(String telefone) {this.telefone = telefone;}
+
 
     @Override
     public boolean equals(Object o) {
