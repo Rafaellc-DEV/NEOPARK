@@ -1,6 +1,8 @@
 package br.com.neopark.services;
 
+import br.com.neopark.entities.Mensalista;
 import br.com.neopark.entities.RegistroSaida;
+import br.com.neopark.entities.StatusPagamento;
 import br.com.neopark.entities.Veiculo;
 import br.com.neopark.entities.Tarifa;
 import br.com.neopark.repositories.RegistroSaidaRepository;
@@ -18,79 +20,107 @@ import java.util.Optional;
 @Service
 public class EstacionamentoService {
 
-    private final VeiculoRepository veiculoRepo;
-    private final RegistroSaidaRepository saidaRepo;
-    private final TarifaService tarifaService;
+        private final VeiculoRepository veiculoRepository;
+        private final RegistroSaidaRepository saidaRepository;
+        private final TarifaService tarifaService;
 
-    public EstacionamentoService(VeiculoRepository veiculoRepo,
-                                 RegistroSaidaRepository saidaRepo,
-                                 TarifaService tarifaService) {
-        this.veiculoRepo = veiculoRepo;
-        this.saidaRepo = saidaRepo;
-        this.tarifaService = tarifaService;
-    }
-
-    @Transactional
-    public Veiculo registrarEntrada(String placa, String tipo, String modelo, String cor, boolean mensalista) {
-        if (placa == null || placa.isBlank()) {
-            throw new IllegalArgumentException("Placa é obrigatória");
-        }
-        if (veiculoRepo.existsByPlaca(placa.trim().toUpperCase())) {
-            throw new IllegalArgumentException("Placa já cadastrada");
-        }
-        Veiculo v = new Veiculo(placa.trim().toUpperCase(), tipo, modelo, cor, mensalista);
-        return veiculoRepo.save(v);
-    }
-
-    /**
-     * Apenas consulta um veículo pela placa (sem remover/persistir saída).
-     * Útil para exibir o resumo (entrada, saída prevista e valor) antes da confirmação.
-     */
-    @Transactional(readOnly = true)
-    public Optional<Veiculo> buscarPorPlaca(String placa) {
-        if (placa == null) return Optional.empty();
-        return veiculoRepo.findByPlaca(placa.trim().toUpperCase());
-    }
-
-    @Transactional
-    public BigDecimal registrarSaidaAvulso(String placa) {
-        if (placa == null || placa.isBlank()) {
-            throw new IllegalArgumentException("Placa é obrigatória");
+        public EstacionamentoService(VeiculoRepository veiculoRepository,
+                                    RegistroSaidaRepository saidaRepository,
+                                    TarifaService tarifaService) {
+            this.veiculoRepository = veiculoRepository;
+            this.saidaRepository = saidaRepository;
+            this.tarifaService = tarifaService;
         }
 
-        Veiculo v = veiculoRepo.findByPlaca(placa.trim().toUpperCase())
-                .orElseThrow(() -> new IllegalArgumentException("Veículo não encontrado"));
-
-        LocalDateTime agora = LocalDateTime.now();
-        long minutos = Duration.between(v.getDataEntrada(), agora).toMinutes();
-        long horasCobradas = Math.max(1, (minutos + 59) / 60); // hora iniciada arredonda para cima
-
-        // Tarifa vigente (cria padrão se não existir)
-        Tarifa tarifa = tarifaService.obterOuCriarPadrao();
-        BigDecimal valorHora = tarifa.getValorHora();
-
-        BigDecimal valor = valorHora.multiply(BigDecimal.valueOf(horasCobradas));
-
-        // Se for mensalista, aplica desconto configurado (0–100%)
-        if (Boolean.TRUE.equals(v.getMensalista())) {
-            BigDecimal descontoPct = tarifa.getDescontoMensalista(); // ex.: 20 => 20%
-            if (descontoPct != null && descontoPct.signum() > 0) {
-                BigDecimal fator = BigDecimal.ONE.subtract(descontoPct.movePointLeft(2)); // 20 => 0.80
-                valor = valor.multiply(fator);
+        @Transactional
+        public Veiculo registrarEntradaAvulso(String placa, String tipo, String modelo, String cor) {
+            // Validação (ex: verificar se a placa já está estacionada)
+            if (veiculoRepository.existsByPlaca(placa)) {
+                throw new IllegalArgumentException("Veículo com esta placa já está no estacionamento.");
             }
+
+            Veiculo veiculo = new Veiculo(placa, tipo, modelo, cor, null);
+
+            return veiculoRepository.save(veiculo);
         }
 
-        valor = valor.setScale(2, RoundingMode.HALF_UP);
+        @Transactional
+        public Veiculo registrarEntradaMensalista(String placa, String tipo, String modelo, String cor, Mensalista mensalista) {
+            // Validação
+            if (veiculoRepository.existsByPlaca(placa)) {
+                throw new IllegalArgumentException("Veículo com esta placa já está no estacionamento.");
+            }
+            if (mensalista == null) {
+                throw new IllegalArgumentException("Mensalista não pode ser nulo para esta operação.");
+            }
 
-        // Persistir histórico e remover veículo dos estacionados
-        saidaRepo.save(new RegistroSaida(v.getPlaca(), v.getDataEntrada(), agora, valor));
-        veiculoRepo.delete(v);
+            Veiculo veiculo = new Veiculo(placa, tipo, modelo, cor, mensalista);
 
-        return valor;
-    }
+            return veiculoRepository.save(veiculo);
+        }
 
-    @Transactional(readOnly = true)
-    public List<Veiculo> listarEstacionados() {
-        return veiculoRepo.findAll();
-    }
+        /**
+         * Apenas consulta um veículo pela placa (sem remover/persistir saída).
+         * Útil para exibir o resumo (entrada, saída prevista e valor) antes da confirmação.
+         */
+        @Transactional(readOnly = true)
+        public Optional<Veiculo> buscarPorPlaca(String placa) {
+            if (placa == null) return Optional.empty();
+            return veiculoRepository.findByPlaca(placa.trim().toUpperCase());
+        }
+
+        @Transactional
+        public BigDecimal registrarSaidaAvulso(String placa) {
+            if (placa == null || placa.isBlank()) {
+                throw new IllegalArgumentException("Placa é obrigatória");
+            }
+
+            Veiculo v = veiculoRepository.findByPlaca(placa.trim().toUpperCase())
+                    .orElseThrow(() -> new IllegalArgumentException("Veículo não encontrado"));
+
+            LocalDateTime agora = LocalDateTime.now();
+            long minutos = Duration.between(v.getDataEntrada(), agora).toMinutes();
+            long horasCobradas = Math.max(1, (minutos + 59) / 60);
+
+            Tarifa tarifa = tarifaService.obterOuCriarPadrao();
+            BigDecimal valorHora = tarifa.getValorHora();
+            BigDecimal valor = BigDecimal.ZERO; // Valor começa em zero
+
+            // --- ESTA É A NOVA LÓGICA DE NEGÓCIO ---
+            
+            // 1. Verificamos se o veículo PERTENCE a um mensalista
+            if (v.getMensalista() != null) {
+                // 2. Se sim, verificamos o STATUS do pagamento
+                StatusPagamento status = v.getMensalista().getStatusPagamento();
+                
+                if (status == StatusPagamento.PAGO) {
+                    // 3. Se está PAGO, a saída é gratuita!
+                    valor = BigDecimal.ZERO;
+                    System.out.println("Mensalista com pagamento em dia. Saída gratuita.");
+                } else {
+                    // 4. Se está VENCIDO ou PENDENTE, cobra como avulso SEM desconto
+                    System.out.println("Mensalista com pagamento pendente. Cobrando valor de avulso.");
+                    valor = valorHora.multiply(BigDecimal.valueOf(horasCobradas));
+                }
+                
+            } else {
+                // 5. Se for um cliente AVULSO (mensalista == null), cobra normal
+                System.out.println("Cliente avulso. Cobrando valor normal.");
+                valor = valorHora.multiply(BigDecimal.valueOf(horasCobradas));
+            }
+
+            valor = valor.setScale(2, RoundingMode.HALF_UP);
+
+            // Persistir histórico e remover veículo dos estacionados
+            saidaRepository.save(new RegistroSaida(v.getPlaca(), v.getDataEntrada(), agora, valor));
+            veiculoRepository.delete(v);
+
+            return valor;
+        }
+
+        @Transactional(readOnly = true)
+        public List<Veiculo> listarEstacionados() {
+            return veiculoRepository.findAll();
+        }
 }
+

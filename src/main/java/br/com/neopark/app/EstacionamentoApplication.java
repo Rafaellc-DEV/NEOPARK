@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Scanner;
 import br.com.neopark.services.MensalistaService;
 
@@ -72,7 +73,7 @@ public class EstacionamentoApplication implements CommandLineRunner {
                         String modelo = sc.nextLine().trim();
                         System.out.print("Cor: ");
                         String cor = sc.nextLine().trim();
-                        Veiculo v = service.registrarEntrada(placa, tipo, modelo, cor, false);
+                        Veiculo v = service.registrarEntradaAvulso(placa, tipo, modelo, cor);
                         System.out.println("✅ Entrada registrada. " + v);
                     }
                     case "2" -> {
@@ -84,98 +85,113 @@ public class EstacionamentoApplication implements CommandLineRunner {
                         String modelo = sc.nextLine().trim();
                         System.out.print("Cor: ");
                         String cor = sc.nextLine().trim();
-                        Veiculo v = service.registrarEntrada(placa, tipo, modelo, cor, true);
+                    
+                        System.out.print("Digite o CPF do mensalista: ");
+                        String cpf = sc.nextLine().trim();
+                        
+                        // 1. Encontra o mensalista no banco de dados
+                        Optional<Mensalista> mensalistaOpt = mensalistaService.buscarPorCpf(cpf);
+                        
+                        if (mensalistaOpt.isEmpty()) {
+                            System.out.println("❌ Mensalista com CPF " + cpf + " não encontrado.");
+                            break; // Sai da operação
+                        }
+                        
+                        Mensalista mensalistaEncontrado = mensalistaOpt.get();
+                        Veiculo v = service.registrarEntradaMensalista(placa, tipo, modelo, cor, mensalistaEncontrado);
+                        
                         System.out.println("✅ Entrada de mensalista registrada. " + v);
                     }
-                    case "3" -> {
-                        System.out.print("Placa para saída (avulso): ");
-                        String placa = sc.nextLine().trim();
 
-                        var veiculoOpt = service.buscarPorPlaca(placa);
-                        if (veiculoOpt.isEmpty()) {
-                            System.out.println("❌ Veículo não encontrado.");
-                            break;
+                        case "3" -> {
+                            System.out.print("Placa para saída (avulso): ");
+                            String placa = sc.nextLine().trim();
+
+                            var veiculoOpt = service.buscarPorPlaca(placa);
+                            if (veiculoOpt.isEmpty()) {
+                                System.out.println("❌ Veículo não encontrado.");
+                                break;
+                            }
+                            var v = veiculoOpt.get();
+
+                            // Prévia do valor com base na tarifa vigente
+                            LocalDateTime agora = LocalDateTime.now();
+                            long minutos = Duration.between(v.getDataEntrada(), agora).toMinutes();
+                            long horas = Math.max(1, (minutos + 59) / 60);
+
+                            Tarifa tarifa = tarifaService.obterOuCriarPadrao();
+                            BigDecimal valor = tarifa.getValorHora().multiply(BigDecimal.valueOf(horas));
+
+                            if (v.getMensalista() != null) {
+                                BigDecimal descontoPct = tarifa.getDescontoMensalista(); // 0..100
+                                if (descontoPct != null && descontoPct.signum() > 0) {
+                                    BigDecimal fator = BigDecimal.ONE.subtract(descontoPct.movePointLeft(2));
+                                    valor = valor.multiply(fator);
+                                }
+                            }
+                            valor = valor.setScale(2, RoundingMode.HALF_UP);
+
+                            System.out.println("=== Resumo da saída ===");
+                            System.out.println("Placa: " + v.getPlaca());
+                            System.out.println("Entrada: " + v.getDataEntrada());
+                            System.out.println("Saída:   " + agora);
+                            System.out.println("Mensalista: " + (v.getMensalista() != null) != null ? "Sim" : "Não");
+                            System.out.println("Tarifa/hora vigente: R$ " + tarifa.getValorHora()
+                                    + " | Desconto mensalista: " + tarifa.getDescontoMensalista() + "%");
+                            System.out.println("Valor devido (prévia): R$ " + valor);
+
+                            System.out.print("Pressione ENTER para confirmar pagamento... ");
+                            sc.nextLine();
+
+                            // Registra de fato no serviço (remove e salva histórico)
+                            valor = service.registrarSaidaAvulso(placa);
+                            System.out.println("✅ Pagamento confirmado. Veículo removido.");
+                            System.out.println("Valor cobrado: R$ " + valor);
                         }
-                        var v = veiculoOpt.get();
-
-                        // Prévia do valor com base na tarifa vigente
-                        LocalDateTime agora = LocalDateTime.now();
-                        long minutos = Duration.between(v.getDataEntrada(), agora).toMinutes();
-                        long horas = Math.max(1, (minutos + 59) / 60);
-
-                        Tarifa tarifa = tarifaService.obterOuCriarPadrao();
-                        BigDecimal valor = tarifa.getValorHora().multiply(BigDecimal.valueOf(horas));
-
-                        if (Boolean.TRUE.equals(v.getMensalista())) {
-                            BigDecimal descontoPct = tarifa.getDescontoMensalista(); // 0..100
-                            if (descontoPct != null && descontoPct.signum() > 0) {
-                                BigDecimal fator = BigDecimal.ONE.subtract(descontoPct.movePointLeft(2));
-                                valor = valor.multiply(fator);
+                        case "4" -> {
+                            var lista = service.listarEstacionados();
+                            if (lista.isEmpty()) {
+                                System.out.println("Lista vazia: nenhum veículo estacionado.");
+                            } else {
+                                System.out.println("Estacionados (" + lista.size() + "):");
+                                lista.forEach(System.out::println);
                             }
                         }
-                        valor = valor.setScale(2, RoundingMode.HALF_UP);
-
-                        System.out.println("=== Resumo da saída ===");
-                        System.out.println("Placa: " + v.getPlaca());
-                        System.out.println("Entrada: " + v.getDataEntrada());
-                        System.out.println("Saída:   " + agora);
-                        System.out.println("Mensalista: " + (Boolean.TRUE.equals(v.getMensalista()) ? "Sim" : "Não"));
-                        System.out.println("Tarifa/hora vigente: R$ " + tarifa.getValorHora()
-                                + " | Desconto mensalista: " + tarifa.getDescontoMensalista() + "%");
-                        System.out.println("Valor devido (prévia): R$ " + valor);
-
-                        System.out.print("Pressione ENTER para confirmar pagamento... ");
-                        sc.nextLine();
-
-                        // Registra de fato no serviço (remove e salva histórico)
-                        valor = service.registrarSaidaAvulso(placa);
-                        System.out.println("✅ Pagamento confirmado. Veículo removido.");
-                        System.out.println("Valor cobrado: R$ " + valor);
-                    }
-                    case "4" -> {
-                        var lista = service.listarEstacionados();
-                        if (lista.isEmpty()) {
-                            System.out.println("Lista vazia: nenhum veículo estacionado.");
-                        } else {
-                            System.out.println("Estacionados (" + lista.size() + "):");
-                            lista.forEach(System.out::println);
+                        case "5" -> {
+                            System.out.print("Digite a placa do veículo: ");
+                            String placaBusca = sc.nextLine().trim();
+                            var veiculoOpt = service.buscarPorPlaca(placaBusca);
+                            if (veiculoOpt.isPresent()) {
+                                var v = veiculoOpt.get();
+                                System.out.println("✅ Veículo encontrado:");
+                                System.out.println("Placa: " + v.getPlaca());
+                                System.out.println("Tipo: " + v.getTipo());
+                                System.out.println("Modelo: " + v.getModelo());
+                                System.out.println("Cor: " + v.getCor());
+                                System.out.println("Entrada: " + v.getDataEntrada());
+                                System.out.println("Mensalista: " + (v.getMensalista() != null) != null ? "Sim" : "Não");
+                            } else {
+                                System.out.println("❌ Veículo não encontrado no estacionamento.");
+                            }
                         }
-                    }
-                    case "5" -> {
-                        System.out.print("Digite a placa do veículo: ");
-                        String placaBusca = sc.nextLine().trim();
-                        var veiculoOpt = service.buscarPorPlaca(placaBusca);
-                        if (veiculoOpt.isPresent()) {
-                            var v = veiculoOpt.get();
-                            System.out.println("✅ Veículo encontrado:");
-                            System.out.println("Placa: " + v.getPlaca());
-                            System.out.println("Tipo: " + v.getTipo());
-                            System.out.println("Modelo: " + v.getModelo());
-                            System.out.println("Cor: " + v.getCor());
-                            System.out.println("Entrada: " + v.getDataEntrada());
-                            System.out.println("Mensalista: " + (Boolean.TRUE.equals(v.getMensalista()) ? "Sim" : "Não"));
-                        } else {
-                            System.out.println("❌ Veículo não encontrado no estacionamento.");
+                        case "6" -> gerenciarTarifas(sc)
+                        ;
+
+                        case "7" -> gerenciarMensalistas(sc);
+
+                        case "0" -> {
+                            loop = false;
+                            System.out.println("Encerrando...");
                         }
+                        default -> System.out.println("Opção inválida.");
                     }
-                    case "6" -> gerenciarTarifas(sc)
-                    ;
-
-                    case "7" -> gerenciarMensalistas(sc);
-
-                    case "0" -> {
-                        loop = false;
-                        System.out.println("Encerrando...");
-                    }
-                    default -> System.out.println("Opção inválida.");
+                } catch (IllegalArgumentException e) {
+                    System.out.println("❌ " + e.getMessage());
+                } catch (Exception e) {
+                    System.out.println("❌ Erro inesperado: " + e.getMessage());
                 }
-            } catch (IllegalArgumentException e) {
-                System.out.println("❌ " + e.getMessage());
-            } catch (Exception e) {
-                System.out.println("❌ Erro inesperado: " + e.getMessage());
             }
         }
-    }
 
     /** Opção de menu para HU11 – Gerenciar Tarifas do Estacionamento. */
     private void gerenciarTarifas(Scanner scanner) {
