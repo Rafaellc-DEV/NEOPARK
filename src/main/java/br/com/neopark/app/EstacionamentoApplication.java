@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List; // Importar java.util.List
 import java.util.Optional;
 import java.util.Scanner;
 import br.com.neopark.services.MensalistaService;
@@ -40,7 +41,6 @@ public class EstacionamentoApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // Garante uma tarifa padrão na primeira execução (ex.: R$ 8,00/h e 0% de desconto)
         tarifaService.obterOuCriarPadrao();
 
         Scanner sc = new Scanner(System.in);
@@ -50,13 +50,12 @@ public class EstacionamentoApplication implements CommandLineRunner {
     ┌──────────────────────────────────────────────┐
     │               NEO PARK — MENU                │
     ├──────────────────────────────────────────────┤
-    │ 1) Registrar ENTRADA (avulso)                │
-    │ 2) Registrar ENTRADA (mensalista)            │
-    │ 3) Registrar SAÍDA (avulso)                  │
-    │ 4) Listar ESTACIONADOS                       │
-    │ 5) Buscar VEÍCULO por PLACA                  │
-    │ 6) Gerenciar TARIFAS                         |  
-    | 7) Gerenciar Mensalistas                     │
+    │ 1) Registrar ENTRADA (Avulso/Mensalista)     │
+    │ 2) Registrar SAÍDA (avulso)                  │
+    │ 3) Listar ESTACIONADOS                       │
+    │ 4) Buscar VEÍCULO por PLACA                  │
+    │ 5) Gerenciar TARIFAS                         |
+    | 6) Gerenciar Mensalistas                     │
     │ 0) Sair                                      │
     └──────────────────────────────────────────────┘""");
             System.out.print("> Selecione uma opção: ");
@@ -73,131 +72,111 @@ public class EstacionamentoApplication implements CommandLineRunner {
                         String modelo = sc.nextLine().trim();
                         System.out.print("Cor: ");
                         String cor = sc.nextLine().trim();
-                        Veiculo v = service.registrarEntradaAvulso(placa, tipo, modelo, cor);
-                        System.out.println("✅ Entrada registrada. " + v);
+
+                        Optional<Mensalista> mensalistaOpt = mensalistaService.consultarPorPlaca(placa);
+
+                        Veiculo v;
+                        if (mensalistaOpt.isPresent()) {
+                            System.out.println("...Reconhecido como Mensalista: " + mensalistaOpt.get().getNome());
+                            v = service.registrarEntradaMensalista(placa, tipo, modelo, cor, mensalistaOpt.get());
+                            System.out.println("✅ Entrada de Mensalista registrada. " + v);
+                        } else {
+                            v = service.registrarEntradaAvulso(placa, tipo, modelo, cor);
+                            System.out.println("✅ Entrada Avulso registrada. " + v);
+                        }
                     }
+
                     case "2" -> {
-                        System.out.print("Placa do mensalista: ");
+                        System.out.print("Placa para saída (avulso): ");
                         String placa = sc.nextLine().trim();
-                        System.out.print("Tipo (ex: Carro/Moto): ");
-                        String tipo = sc.nextLine().trim();
-                        System.out.print("Modelo: ");
-                        String modelo = sc.nextLine().trim();
-                        System.out.print("Cor: ");
-                        String cor = sc.nextLine().trim();
-                    
-                        System.out.print("Digite o CPF do mensalista: ");
-                        String cpf = sc.nextLine().trim();
-                        
-                        // 1. Encontra o mensalista no banco de dados
-                        Optional<Mensalista> mensalistaOpt = mensalistaService.buscarPorCpf(cpf);
-                        
-                        if (mensalistaOpt.isEmpty()) {
-                            System.out.println("❌ Mensalista com CPF " + cpf + " não encontrado.");
-                            break; // Sai da operação
+
+                        var veiculoOpt = service.buscarPorPlaca(placa);
+                        if (veiculoOpt.isEmpty()) {
+                            System.out.println("❌ Veículo não encontrado.");
+                            break;
                         }
-                        
-                        Mensalista mensalistaEncontrado = mensalistaOpt.get();
-                        Veiculo v = service.registrarEntradaMensalista(placa, tipo, modelo, cor, mensalistaEncontrado);
-                        
-                        System.out.println("✅ Entrada de mensalista registrada. " + v);
-                    }
+                        var v = veiculoOpt.get();
 
-                        case "3" -> {
-                            System.out.print("Placa para saída (avulso): ");
-                            String placa = sc.nextLine().trim();
+                        LocalDateTime agora = LocalDateTime.now();
+                        long minutos = Duration.between(v.getDataEntrada(), agora).toMinutes();
+                        long horas = Math.max(1, (minutos + 59) / 60);
 
-                            var veiculoOpt = service.buscarPorPlaca(placa);
-                            if (veiculoOpt.isEmpty()) {
-                                System.out.println("❌ Veículo não encontrado.");
-                                break;
+                        Tarifa tarifa = tarifaService.obterOuCriarPadrao();
+                        BigDecimal valor = tarifa.getValorHora().multiply(BigDecimal.valueOf(horas));
+
+                        if (v.getMensalista() != null) {
+                            BigDecimal descontoPct = tarifa.getDescontoMensalista();
+                            if (descontoPct != null && descontoPct.signum() > 0) {
+                                BigDecimal fator = BigDecimal.ONE.subtract(descontoPct.movePointLeft(2));
+                                valor = valor.multiply(fator);
                             }
+                        }
+                        valor = valor.setScale(2, RoundingMode.HALF_UP);
+
+                        System.out.println("=== Resumo da saída ===");
+                        System.out.println("Placa: " + v.getPlaca());
+                        System.out.println("Entrada: " + v.getDataEntrada());
+                        System.out.println("Saída:   " + agora);
+                        System.out.println("Mensalista: " + (v.getMensalista() != null ? "Sim" : "Não"));
+                        System.out.println("Tarifa/hora vigente: R$ " + tarifa.getValorHora()
+                                + " | Desconto mensalista: " + tarifa.getDescontoMensalista() + "%");
+                        System.out.println("Valor devido (prévia): R$ " + valor);
+
+                        System.out.print("Pressione ENTER para confirmar pagamento... ");
+                        sc.nextLine();
+
+                        valor = service.registrarSaidaAvulso(placa);
+                        System.out.println("✅ Pagamento confirmado. Veículo removido.");
+                        System.out.println("Valor cobrado: R$ " + valor);
+                    }
+                    case "3" -> {
+                        var lista = service.listarEstacionados();
+                        if (lista.isEmpty()) {
+                            System.out.println("Lista vazia: nenhum veículo estacionado.");
+                        } else {
+                            System.out.println("Estacionados (" + lista.size() + "):");
+                            lista.forEach(System.out::println);
+                        }
+                    }
+                    case "4" -> {
+                        System.out.print("Digite a placa do veículo: ");
+                        String placaBusca = sc.nextLine().trim();
+                        var veiculoOpt = service.buscarPorPlaca(placaBusca);
+                        if (veiculoOpt.isPresent()) {
                             var v = veiculoOpt.get();
-
-                            // Prévia do valor com base na tarifa vigente
-                            LocalDateTime agora = LocalDateTime.now();
-                            long minutos = Duration.between(v.getDataEntrada(), agora).toMinutes();
-                            long horas = Math.max(1, (minutos + 59) / 60);
-
-                            Tarifa tarifa = tarifaService.obterOuCriarPadrao();
-                            BigDecimal valor = tarifa.getValorHora().multiply(BigDecimal.valueOf(horas));
-
-                            if (v.getMensalista() != null) {
-                                BigDecimal descontoPct = tarifa.getDescontoMensalista(); // 0..100
-                                if (descontoPct != null && descontoPct.signum() > 0) {
-                                    BigDecimal fator = BigDecimal.ONE.subtract(descontoPct.movePointLeft(2));
-                                    valor = valor.multiply(fator);
-                                }
-                            }
-                            valor = valor.setScale(2, RoundingMode.HALF_UP);
-
-                            System.out.println("=== Resumo da saída ===");
+                            System.out.println("✅ Veículo encontrado:");
                             System.out.println("Placa: " + v.getPlaca());
+                            System.out.println("Tipo: " + v.getTipo());
+                            System.out.println("Modelo: " + v.getModelo());
+                            System.out.println("Cor: " + v.getCor());
                             System.out.println("Entrada: " + v.getDataEntrada());
-                            System.out.println("Saída:   " + agora);
-                            System.out.println("Mensalista: " + (v.getMensalista() != null) != null ? "Sim" : "Não");
-                            System.out.println("Tarifa/hora vigente: R$ " + tarifa.getValorHora()
-                                    + " | Desconto mensalista: " + tarifa.getDescontoMensalista() + "%");
-                            System.out.println("Valor devido (prévia): R$ " + valor);
-
-                            System.out.print("Pressione ENTER para confirmar pagamento... ");
-                            sc.nextLine();
-
-                            // Registra de fato no serviço (remove e salva histórico)
-                            valor = service.registrarSaidaAvulso(placa);
-                            System.out.println("✅ Pagamento confirmado. Veículo removido.");
-                            System.out.println("Valor cobrado: R$ " + valor);
+                            System.out.println("Mensalista: " + (v.getMensalista() != null ? "Sim" : "Não"));
+                        } else {
+                            System.out.println("❌ Veículo não encontrado no estacionamento.");
                         }
-                        case "4" -> {
-                            var lista = service.listarEstacionados();
-                            if (lista.isEmpty()) {
-                                System.out.println("Lista vazia: nenhum veículo estacionado.");
-                            } else {
-                                System.out.println("Estacionados (" + lista.size() + "):");
-                                lista.forEach(System.out::println);
-                            }
-                        }
-                        case "5" -> {
-                            System.out.print("Digite a placa do veículo: ");
-                            String placaBusca = sc.nextLine().trim();
-                            var veiculoOpt = service.buscarPorPlaca(placaBusca);
-                            if (veiculoOpt.isPresent()) {
-                                var v = veiculoOpt.get();
-                                System.out.println("✅ Veículo encontrado:");
-                                System.out.println("Placa: " + v.getPlaca());
-                                System.out.println("Tipo: " + v.getTipo());
-                                System.out.println("Modelo: " + v.getModelo());
-                                System.out.println("Cor: " + v.getCor());
-                                System.out.println("Entrada: " + v.getDataEntrada());
-                                System.out.println("Mensalista: " + (v.getMensalista() != null) != null ? "Sim" : "Não");
-                            } else {
-                                System.out.println("❌ Veículo não encontrado no estacionamento.");
-                            }
-                        }
-                        case "6" -> gerenciarTarifas(sc)
-                        ;
-
-                        case "7" -> gerenciarMensalistas(sc);
-
-                        case "0" -> {
-                            loop = false;
-                            System.out.println("Encerrando...");
-                        }
-                        default -> System.out.println("Opção inválida.");
                     }
-                } catch (IllegalArgumentException e) {
-                    System.out.println("❌ " + e.getMessage());
-                } catch (Exception e) {
-                    System.out.println("❌ Erro inesperado: " + e.getMessage());
+                    case "5" -> gerenciarTarifas(sc);
+
+                    case "6" -> gerenciarMensalistas(sc);
+
+                    case "0" -> {
+                        loop = false;
+                        System.out.println("Encerrando...");
+                    }
+                    default -> System.out.println("Opção inválida.");
                 }
+            } catch (IllegalArgumentException e) {
+                System.out.println("❌ " + e.getMessage());
+            } catch (Exception e) {
+                System.out.println("❌ Erro inesperado: " + e.getMessage());
             }
         }
+    }
 
-    /** Opção de menu para HU11 – Gerenciar Tarifas do Estacionamento. */
     private void gerenciarTarifas(Scanner scanner) {
         try {
             Tarifa atual = tarifaService.obterOuCriarPadrao();
-            System.out.println("\n=== GERENCIAR TARIFAS ===");
+            System.out.println("\n=== GERENCIAR TARIFAS (Opção 5) ===");
             System.out.println("Tarifa/hora atual: R$ " + atual.getValorHora());
             System.out.println("Desconto mensalista atual: " + atual.getDescontoMensalista() + "%");
 
@@ -209,12 +188,10 @@ public class EstacionamentoApplication implements CommandLineRunner {
             String inDesc = scanner.nextLine().trim().replace(",", ".");
             BigDecimal novoDesconto = new BigDecimal(inDesc);
 
-            // Atualiza com validações (cenário desfavorável cobre zero/negativo)
             tarifaService.atualizar(novoValorHora, novoDesconto);
 
             System.out.println("✅ Tarifas atualizadas com sucesso e já aplicadas aos mensalistas.");
         } catch (IllegalArgumentException ex) {
-            // Cenário Desfavorável: mensagem exigida pela história
             System.out.println("❌ " + ex.getMessage());
             System.out.println("Nada foi persistido.");
         } catch (Exception e) {
@@ -223,46 +200,127 @@ public class EstacionamentoApplication implements CommandLineRunner {
     }
 
     private void gerenciarMensalistas(Scanner sc) {
-    System.out.println("\n=== GERENCIAR MENSALISTAS ===");
-    System.out.println("1) Cadastrar Novo Mensalista");
-    System.out.println("2) Registrar Pagamento de Mensalidade");
-    System.out.println("0) Voltar ao Menu Principal");
-    System.out.print("> Selecione uma opção: ");
-    String op = sc.nextLine().trim();
+        int subOpcao = -1;
 
-    try {
-        switch (op) {
-            case "1" -> {
-                System.out.print("Nome do novo mensalista: ");
-                String nome = sc.nextLine().trim();
-                System.out.print("CPF: ");
-                String cpf = sc.nextLine().trim();
-                System.out.print("Telefone: ");
-                String telefone = sc.nextLine().trim();
-                System.out.print("Placa Principal (ex: ABC-1234): ");
-                String placa = sc.nextLine().trim();
-                
-                Mensalista novo = mensalistaService.cadastrarMensalista(nome, cpf, telefone, placa);
-                System.out.println("✅ Mensalista cadastrado com sucesso! ID: " + novo.getId());
-                System.out.println("   Primeiro vencimento em: " + novo.getDataVencimento());
+        while (subOpcao != 0) {
+            System.out.println("\n--- [Opção 6] Gestão de Mensalistas ---");
+            System.out.println("1. Cadastrar mensalista");
+            System.out.println("2. Consultar situação (por Placa)");
+            System.out.println("3. Registrar pagamento do mês");
+            System.out.println("4. Listar mensalistas PENDENTES"); // *** NOVA OPÇÃO ***
+            System.out.println("0. Voltar ao menu principal");
+            System.out.print("> Escolha uma opção: ");
+
+            String op = sc.nextLine().trim();
+            try {
+                subOpcao = Integer.parseInt(op);
+            } catch (NumberFormatException e) {
+                System.out.println("❌ Erro: Opção inválida. Digite um número.");
+                subOpcao = -1;
+                continue;
             }
-            case "2" -> {
-                System.out.print("Nome do mensalista para registrar pagamento: ");
-                String nome = sc.nextLine().trim();
-                
-                String status = mensalistaService.registrarPagamento(nome);
-                System.out.println("✅ Situação do pagamento: " + status);
+
+            switch (subOpcao) {
+                case 1:
+                    try {
+                        System.out.print("Digite o Nome: ");
+                        String nome = sc.nextLine();
+                        System.out.print("Digite o CPF: ");
+                        String cpf = sc.nextLine();
+                        System.out.print("Digite o Telefone: ");
+                        String telefone = sc.nextLine();
+                        System.out.print("Digite a Placa Principal: ");
+                        String placa = sc.nextLine();
+
+                        Mensalista novo = mensalistaService.cadastrarMensalista(nome, cpf, telefone, placa);
+
+                        System.out.println("\n✅ Mensalista cadastrado. Aguardando 1º pagamento (Opção 3).");
+                        System.out.println("   Nome: " + novo.getNome());
+                        System.out.println("   Placa: " + novo.getPlacaPrincipal());
+                        System.out.println("   Status: " + novo.getStatusPagamento().getDescricao());
+                        System.out.println("   Vencimento: " + novo.getDataVencimento());
+
+                    } catch (IllegalArgumentException e) {
+                        System.out.println("❌ ERRO ao cadastrar: " + e.getMessage());
+                    } catch (Exception e) {
+                        System.out.println("❌ ERRO inesperado: " + e.getMessage());
+                    }
+                    break;
+
+                case 2:
+                    try {
+                        System.out.print("Digite a Placa Principal para consulta: ");
+                        String placa = sc.nextLine();
+
+                        Optional<Mensalista> mensalistaOpt = mensalistaService.consultarPorPlaca(placa);
+
+                        if (mensalistaOpt.isPresent()) {
+                            Mensalista m = mensalistaOpt.get();
+                            System.out.println("\n--- ℹ️ Situação do Mensalista ---");
+                            System.out.println("   Nome: " + m.getNome());
+                            System.out.println("   Placa: " + m.getPlacaPrincipal());
+                            System.out.println("   CPF: " + m.getCpf());
+                            System.out.println("   Data de Vencimento: " + m.getDataVencimento());
+                            System.out.println("   Situação: " + m.getStatusPagamento().getDescricao());
+                        } else {
+                            System.out.println("❌ ERRO: Mensalista não encontrado com a placa: " + placa);
+                        }
+                    } catch (IllegalArgumentException e) {
+                        System.out.println("❌ ERRO ao consultar: " + e.getMessage());
+                    }
+                    break;
+
+                case 3:
+                    try {
+                        System.out.print("Digite a PLACA do mensalista para registrar o pagamento: ");
+                        String placaCliente = sc.nextLine();
+
+                        Mensalista mensalistaAtualizado = mensalistaService.registrarPagamentoPorPlaca(placaCliente);
+
+                        System.out.println("\n✅ Pagamento registrado com sucesso!");
+                        System.out.println("   Cliente: " + mensalistaAtualizado.getNome());
+                        System.out.println("   Placa: " + mensalistaAtualizado.getPlacaPrincipal());
+                        System.out.println("   Situação: " + mensalistaAtualizado.getStatusPagamento().getDescricao());
+                        System.out.println("   Novo vencimento: " + mensalistaAtualizado.getDataVencimento());
+
+                    } catch (IllegalArgumentException e) {
+                        System.out.println("❌ ERRO ao registrar pagamento: " + e.getMessage());
+                    } catch (Exception e) {
+                        System.out.println("❌ ERRO: " + e.getMessage());
+                    }
+                    break;
+
+                // *** NOVO CASE 4 ADICIONADO ***
+                case 4:
+                    try {
+                        System.out.println("\n--- 💵 Mensalistas com Pagamento PENDENTE ---");
+                        List<Mensalista> pendentes = mensalistaService.buscarPendentes();
+
+                        if (pendentes.isEmpty()) {
+                            System.out.println("   Nenhum mensalista com pendências encontrado.");
+                        } else {
+                            System.out.println("   Total de pendências: " + pendentes.size());
+                            for (Mensalista m : pendentes) {
+                                System.out.println("   --------------------");
+                                System.out.println("   Nome: " + m.getNome());
+                                System.out.println("   Placa: " + m.getPlacaPrincipal());
+                                System.out.println("   Telefone: " + m.getTelefone());
+                                System.out.println("   Vencido desde: " + m.getDataVencimento());
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println("❌ ERRO ao buscar pendências: " + e.getMessage());
+                    }
+                    break;
+
+                case 0:
+                    System.out.println("Voltando ao menu principal...");
+                    break;
+
+                default:
+                    System.out.println("❌ Opção inválida. Tente novamente.");
+                    break;
             }
-            case "0" -> {
-                System.out.println("Voltando ao menu principal...");
-            } // Não faz nada, apenas volta
-            default -> System.out.println("Opção inválida.");
         }
-    } catch (IllegalArgumentException e) {
-        // Captura os erros de validação do Service
-        System.out.println("❌ Erro: " + e.getMessage());
-    } catch (Exception e) {
-        System.out.println("❌ Erro inesperado: " + e.getMessage());
     }
-}
 }
