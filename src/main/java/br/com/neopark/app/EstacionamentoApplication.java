@@ -1,10 +1,14 @@
 package br.com.neopark.app;
 
-import br.com.neopark.entities.Mensalista;
-import br.com.neopark.entities.Tarifa;
-import br.com.neopark.entities.Veiculo;
-import br.com.neopark.services.EstacionamentoService;
-import br.com.neopark.services.TarifaService;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Optional;
+import java.util.Scanner;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -12,14 +16,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.List; // Importar java.util.List
-import java.util.Optional;
-import java.util.Scanner;
+import br.com.neopark.entities.Mensalista;
+import br.com.neopark.entities.Movimentacao;
+import br.com.neopark.entities.Tarifa;
+import br.com.neopark.entities.Veiculo;
+import br.com.neopark.services.EstacionamentoService;
 import br.com.neopark.services.MensalistaService;
+import br.com.neopark.services.TarifaService;
 
 @SpringBootApplication(scanBasePackages = "br.com.neopark")
 @EntityScan(basePackages = "br.com.neopark.entities")
@@ -35,6 +38,9 @@ public class EstacionamentoApplication implements CommandLineRunner {
     @Autowired
     private MensalistaService mensalistaService;
 
+    // Formato de data e hora padrão para entrada do usuário
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
     public static void main(String[] args) {
         SpringApplication.run(EstacionamentoApplication.class, args);
     }
@@ -47,17 +53,18 @@ public class EstacionamentoApplication implements CommandLineRunner {
         boolean loop = true;
         while (loop) {
             System.out.println("""
-    ┌──────────────────────────────────────────────┐
-    │               NEO PARK — MENU                │
-    ├──────────────────────────────────────────────┤
-    │ 1) Registrar ENTRADA (Avulso/Mensalista)     │
-    │ 2) Registrar SAÍDA (avulso)                  │
-    │ 3) Listar ESTACIONADOS                       │
-    │ 4) Buscar VEÍCULO por PLACA                  │
-    │ 5) Gerenciar TARIFAS                         |
-    | 6) Gerenciar Mensalistas                     │
-    │ 0) Sair                                      │
-    └──────────────────────────────────────────────┘""");
+┌──────────────────────────────────────────────┐
+│             NEO PARK — MENU                  │
+├──────────────────────────────────────────────┤
+│ 1) Registrar ENTRADA (Avulso/Mensalista)     │
+│ 2) Registrar SAÍDA (avulso)                  │
+│ 3) Listar ESTACIONADOS                       │
+│ 4) Buscar VEÍCULO por PLACA                  │
+│ 5) Gerenciar TARIFAS                         │
+│ 6) Gerenciar Mensalistas                     │
+│ 7) Ver HISTÓRICO                             │
+│ 0) Sair                                      │
+└──────────────────────────────────────────────┘""");
             System.out.print("> Selecione uma opção: ");
             String op = sc.nextLine().trim();
 
@@ -105,21 +112,21 @@ public class EstacionamentoApplication implements CommandLineRunner {
                         BigDecimal valor = tarifa.getValorHora().multiply(BigDecimal.valueOf(horas));
 
                         if (v.getMensalista() != null) {
-                            BigDecimal descontoPct = tarifa.getDescontoMensalista();
-                            if (descontoPct != null && descontoPct.signum() > 0) {
-                                BigDecimal fator = BigDecimal.ONE.subtract(descontoPct.movePointLeft(2));
-                                valor = valor.multiply(fator);
-                            }
+                            // Reavaliar valor conforme regra no service (PAGO: ZERO; PENDENTE/VENCIDO: Cheio)
+                            if (v.getMensalista().getStatusPagamento() == br.com.neopark.entities.StatusPagamento.PAGO) {
+                                valor = BigDecimal.ZERO;
+                            } // Caso contrário, valor fica o cheio calculado (avulso)
                         }
                         valor = valor.setScale(2, RoundingMode.HALF_UP);
 
                         System.out.println("=== Resumo da saída ===");
                         System.out.println("Placa: " + v.getPlaca());
-                        System.out.println("Entrada: " + v.getDataEntrada());
-                        System.out.println("Saída:   " + agora);
-                        System.out.println("Mensalista: " + (v.getMensalista() != null ? "Sim" : "Não"));
-                        System.out.println("Tarifa/hora vigente: R$ " + tarifa.getValorHora()
-                                + " | Desconto mensalista: " + tarifa.getDescontoMensalista() + "%");
+                        System.out.println("Entrada: " + v.getDataEntrada().format(DATETIME_FORMATTER));
+                        System.out.println("Saída:   " + agora.format(DATETIME_FORMATTER));
+                        System.out.println("Permanência (minutos): " + minutos + " (Cobrado: " + horas + "h)");
+                        System.out.println("Mensalista: " + (v.getMensalista() != null ? 
+                            "Sim (" + v.getMensalista().getStatusPagamento().getDescricao() + ")" : "Não"));
+                        System.out.println("Tarifa/hora vigente: R$ " + tarifa.getValorHora());
                         System.out.println("Valor devido (prévia): R$ " + valor);
 
                         System.out.print("Pressione ENTER para confirmar pagamento... ");
@@ -149,8 +156,9 @@ public class EstacionamentoApplication implements CommandLineRunner {
                             System.out.println("Tipo: " + v.getTipo());
                             System.out.println("Modelo: " + v.getModelo());
                             System.out.println("Cor: " + v.getCor());
-                            System.out.println("Entrada: " + v.getDataEntrada());
-                            System.out.println("Mensalista: " + (v.getMensalista() != null ? "Sim" : "Não"));
+                            System.out.println("Entrada: " + v.getDataEntrada().format(DATETIME_FORMATTER));
+                            System.out.println("Mensalista: " + (v.getMensalista() != null ? 
+                                "Sim (" + v.getMensalista().getStatusPagamento().getDescricao() + ")" : "Não"));
                         } else {
                             System.out.println("❌ Veículo não encontrado no estacionamento.");
                         }
@@ -158,6 +166,8 @@ public class EstacionamentoApplication implements CommandLineRunner {
                     case "5" -> gerenciarTarifas(sc);
 
                     case "6" -> gerenciarMensalistas(sc);
+                    
+                    case "7" -> gerenciarHistorico(sc);
 
                     case "0" -> {
                         loop = false;
@@ -169,6 +179,94 @@ public class EstacionamentoApplication implements CommandLineRunner {
                 System.out.println("❌ " + e.getMessage());
             } catch (Exception e) {
                 System.out.println("❌ Erro inesperado: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void gerenciarHistorico(Scanner sc) {
+        int subOpcao = -1;
+
+        while (subOpcao != 0) {
+            System.out.println("\n--- [Opção 7] Histórico de Movimentações ---");
+            System.out.println("1. Listar todas as movimentações");
+            System.out.println("2. Buscar por período de SAÍDA (dd/MM/yyyy HH:mm)");
+            System.out.println("0. Voltar ao menu principal");
+            System.out.print("> Escolha uma opção: ");
+
+            String op = sc.nextLine().trim();
+            try {
+                subOpcao = Integer.parseInt(op);
+            } catch (NumberFormatException e) {
+                System.out.println("❌ Erro: Opção inválida. Digite um número.");
+                subOpcao = -1;
+                continue;
+            }
+
+            switch (subOpcao) {
+                case 1:
+                    listarHistoricoCompleto();
+                    break;
+
+                case 2:
+                    buscarHistoricoPorPeriodo(sc);
+                    break;
+                
+                case 0:
+                    System.out.println("Voltando ao menu principal...");
+                    break;
+
+                default:
+                    System.out.println("❌ Opção inválida. Tente novamente.");
+                    break;
+            }
+        }
+    }
+
+    private void listarHistoricoCompleto() {
+        try {
+            List<Movimentacao> historico = service.listarHistorico();
+            exibirHistorico(historico, "Histórico Completo");
+        } catch (Exception e) {
+            System.out.println("❌ ERRO ao listar histórico: " + e.getMessage());
+        }
+    }
+
+    private void buscarHistoricoPorPeriodo(Scanner sc) {
+        try {
+            System.out.print("Data e hora INICIAL (dd/MM/yyyy HH:mm): ");
+            String strInicio = sc.nextLine();
+            LocalDateTime inicio = LocalDateTime.parse(strInicio, DATETIME_FORMATTER);
+
+            System.out.print("Data e hora FINAL (dd/MM/yyyy HH:mm): ");
+            String strFim = sc.nextLine();
+            LocalDateTime fim = LocalDateTime.parse(strFim, DATETIME_FORMATTER);
+
+            List<Movimentacao> historico = service.buscarHistoricoPorPeriodo(inicio, fim);
+            exibirHistorico(historico, "Histórico de " + strInicio + " a " + strFim);
+        } catch (java.time.format.DateTimeParseException e) {
+            System.out.println("❌ ERRO: Formato de data/hora inválido. Use dd/MM/yyyy HH:mm (ex: 25/10/2025 10:30).");
+        } catch (Exception e) {
+            System.out.println("❌ ERRO ao buscar por período: " + e.getMessage());
+        }
+    }
+
+    private void exibirHistorico(List<Movimentacao> historico, String titulo) {
+        System.out.println("\n--- 📖 " + titulo + " (" + historico.size() + " Registros) ---");
+        if (historico.isEmpty()) {
+            System.out.println("  Nenhum registro encontrado.");
+        } else {
+            System.out.printf("%-10s | %-20s | %-20s | %-12s | %s%n", 
+                "PLACA", "ENTRADA", "SAÍDA", "VALOR (R$)", "MENSALISTA");
+            System.out.println("--------------------------------------------------------------------------");
+            for (Movimentacao m : historico) {
+                String entradaFmt = m.getDataEntrada().format(DATETIME_FORMATTER);
+                String saidaFmt = m.getDataSaida().format(DATETIME_FORMATTER);
+                String valorFmt = String.format("%.2f", m.getValorPago());
+                String mensalistaFmt = m.isMensalista() ? "Sim" : "Não";
+
+                System.out.printf("%-10s | %-20s | %-20s | %-12s | %s%n",
+                    m.getPlaca(), entradaFmt, saidaFmt, valorFmt, mensalistaFmt);
             }
         }
     }
@@ -207,7 +305,7 @@ public class EstacionamentoApplication implements CommandLineRunner {
             System.out.println("1. Cadastrar mensalista");
             System.out.println("2. Consultar situação (por Placa)");
             System.out.println("3. Registrar pagamento do mês");
-            System.out.println("4. Listar mensalistas PENDENTES"); // *** NOVA OPÇÃO ***
+            System.out.println("4. Listar mensalistas PENDENTES");
             System.out.println("0. Voltar ao menu principal");
             System.out.print("> Escolha uma opção: ");
 
@@ -235,10 +333,10 @@ public class EstacionamentoApplication implements CommandLineRunner {
                         Mensalista novo = mensalistaService.cadastrarMensalista(nome, cpf, telefone, placa);
 
                         System.out.println("\n✅ Mensalista cadastrado. Aguardando 1º pagamento (Opção 3).");
-                        System.out.println("   Nome: " + novo.getNome());
-                        System.out.println("   Placa: " + novo.getPlacaPrincipal());
-                        System.out.println("   Status: " + novo.getStatusPagamento().getDescricao());
-                        System.out.println("   Vencimento: " + novo.getDataVencimento());
+                        System.out.println("  Nome: " + novo.getNome());
+                        System.out.println("  Placa: " + novo.getPlacaPrincipal());
+                        System.out.println("  Status: " + novo.getStatusPagamento().getDescricao());
+                        System.out.println("  Vencimento: " + novo.getDataVencimento());
 
                     } catch (IllegalArgumentException e) {
                         System.out.println("❌ ERRO ao cadastrar: " + e.getMessage());
@@ -257,11 +355,11 @@ public class EstacionamentoApplication implements CommandLineRunner {
                         if (mensalistaOpt.isPresent()) {
                             Mensalista m = mensalistaOpt.get();
                             System.out.println("\n--- ℹ️ Situação do Mensalista ---");
-                            System.out.println("   Nome: " + m.getNome());
-                            System.out.println("   Placa: " + m.getPlacaPrincipal());
-                            System.out.println("   CPF: " + m.getCpf());
-                            System.out.println("   Data de Vencimento: " + m.getDataVencimento());
-                            System.out.println("   Situação: " + m.getStatusPagamento().getDescricao());
+                            System.out.println("  Nome: " + m.getNome());
+                            System.out.println("  Placa: " + m.getPlacaPrincipal());
+                            System.out.println("  CPF: " + m.getCpf());
+                            System.out.println("  Data de Vencimento: " + m.getDataVencimento());
+                            System.out.println("  Situação: " + m.getStatusPagamento().getDescricao());
                         } else {
                             System.out.println("❌ ERRO: Mensalista não encontrado com a placa: " + placa);
                         }
@@ -278,10 +376,10 @@ public class EstacionamentoApplication implements CommandLineRunner {
                         Mensalista mensalistaAtualizado = mensalistaService.registrarPagamentoPorPlaca(placaCliente);
 
                         System.out.println("\n✅ Pagamento registrado com sucesso!");
-                        System.out.println("   Cliente: " + mensalistaAtualizado.getNome());
-                        System.out.println("   Placa: " + mensalistaAtualizado.getPlacaPrincipal());
-                        System.out.println("   Situação: " + mensalistaAtualizado.getStatusPagamento().getDescricao());
-                        System.out.println("   Novo vencimento: " + mensalistaAtualizado.getDataVencimento());
+                        System.out.println("  Cliente: " + mensalistaAtualizado.getNome());
+                        System.out.println("  Placa: " + mensalistaAtualizado.getPlacaPrincipal());
+                        System.out.println("  Situação: " + mensalistaAtualizado.getStatusPagamento().getDescricao());
+                        System.out.println("  Novo vencimento: " + mensalistaAtualizado.getDataVencimento());
 
                     } catch (IllegalArgumentException e) {
                         System.out.println("❌ ERRO ao registrar pagamento: " + e.getMessage());
@@ -290,22 +388,21 @@ public class EstacionamentoApplication implements CommandLineRunner {
                     }
                     break;
 
-                // *** NOVO CASE 4 ADICIONADO ***
                 case 4:
                     try {
                         System.out.println("\n--- 💵 Mensalistas com Pagamento PENDENTE ---");
                         List<Mensalista> pendentes = mensalistaService.buscarPendentes();
 
                         if (pendentes.isEmpty()) {
-                            System.out.println("   Nenhum mensalista com pendências encontrado.");
+                            System.out.println("  Nenhum mensalista com pendências encontrado.");
                         } else {
-                            System.out.println("   Total de pendências: " + pendentes.size());
+                            System.out.println("  Total de pendências: " + pendentes.size());
                             for (Mensalista m : pendentes) {
-                                System.out.println("   --------------------");
-                                System.out.println("   Nome: " + m.getNome());
-                                System.out.println("   Placa: " + m.getPlacaPrincipal());
-                                System.out.println("   Telefone: " + m.getTelefone());
-                                System.out.println("   Vencido desde: " + m.getDataVencimento());
+                                System.out.println("  --------------------");
+                                System.out.println("  Nome: " + m.getNome());
+                                System.out.println("  Placa: " + m.getPlacaPrincipal());
+                                System.out.println("  Telefone: " + m.getTelefone());
+                                System.out.println("  Vencido desde: " + m.getDataVencimento());
                             }
                         }
                     } catch (Exception e) {
@@ -314,7 +411,6 @@ public class EstacionamentoApplication implements CommandLineRunner {
                     break;
 
                 case 0:
-                    System.out.println("Voltando ao menu principal...");
                     break;
 
                 default:
