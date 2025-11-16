@@ -20,10 +20,6 @@ public class MensalistaService {
         this.mensalistaRepo = mensalistaRepo;
     }
 
-    /**
-     * Registra o pagamento (por NOME).
-     * @deprecated Use registrarPagamentoPorPlaca para evitar erros de duplicidade.
-     */
     @Transactional
     public Mensalista registrarPagamento(String nomeCliente) {
         if (nomeCliente == null || nomeCliente.isBlank()) {
@@ -33,26 +29,28 @@ public class MensalistaService {
         Mensalista mensalista = mensalistaRepo.findByNome(nomeCliente)
                 .orElseThrow(() -> new IllegalArgumentException("Mensalista não encontrado: " + nomeCliente));
 
+        if (mensalista.getDataVencimento() == null) {
+            throw new IllegalStateException("Data de vencimento não pode ser nula para registrar pagamento.");
+        }
+
         if (mensalista.getStatusPagamento() == StatusPagamento.PAGO) {
             throw new IllegalArgumentException("Pagamento já está confirmado para este vencimento.");
         }
 
         LocalDate hoje = LocalDate.now();
+        LocalDate vencimento = mensalista.getDataVencimento();
 
-        if (hoje.isBefore(mensalista.getDataVencimento())) {
+        //Pagamento adiantado
+        if (hoje.isBefore(vencimento)) {
             mensalista.setStatusPagamento(StatusPagamento.AGUARDANDO_VENCIMENTO);
         } else {
             mensalista.setStatusPagamento(StatusPagamento.PAGO);
-            LocalDate proximoVencimento = mensalista.getDataVencimento().plusMonths(1);
-            mensalista.setDataVencimento(proximoVencimento);
+            mensalista.setDataVencimento(vencimento.plusMonths(1));
         }
 
         return mensalistaRepo.save(mensalista);
     }
 
-    /**
-     * Registra o pagamento (por PLACA) e retorna a entidade Mensalista atualizada.
-     */
     @Transactional
     public Mensalista registrarPagamentoPorPlaca(String placa) {
         if (placa == null || placa.isBlank()) {
@@ -62,33 +60,33 @@ public class MensalistaService {
         Mensalista mensalista = mensalistaRepo.findByPlacaPrincipal(placa)
                 .orElseThrow(() -> new IllegalArgumentException("Mensalista não encontrado com Placa: " + placa));
 
-        // Se o status já é PAGO (para o vencimento atual), não permite pagar de novo.
+        if (mensalista.getDataVencimento() == null) {
+            throw new IllegalStateException("Data de vencimento não pode ser nula para registrar pagamento.");
+        }
+
         if (mensalista.getStatusPagamento() == StatusPagamento.PAGO) {
             throw new IllegalArgumentException("Pagamento já está confirmado para este vencimento.");
         }
 
         LocalDate hoje = LocalDate.now();
+        LocalDate vencimento = mensalista.getDataVencimento();
+        StatusPagamento status = mensalista.getStatusPagamento();
 
-        // Se o status era AGUARDANDO_VENCIMENTO (pagou adiantado)
-        if (hoje.isBefore(mensalista.getDataVencimento()) && mensalista.getStatusPagamento() == StatusPagamento.AGUARDANDO_VENCIMENTO) {
+        // Pagamento adiantado (antes do vencimento)
+        if (hoje.isBefore(vencimento) && status == StatusPagamento.AGUARDANDO_VENCIMENTO) {
             mensalista.setStatusPagamento(StatusPagamento.PAGO);
-            // Não mexe no vencimento, pois já estava correto.
+            // Vencimento permanece o mesmo
         }
-        // Se o status era PENDENTE (venceu hoje ou estava atrasado)
-        // OU se é o primeiro pagamento (vencimento=hoje, status=PENDENTE)
         else {
             mensalista.setStatusPagamento(StatusPagamento.PAGO);
-            LocalDate proximoVencimento = mensalista.getDataVencimento().plusMonths(1);
-            mensalista.setDataVencimento(proximoVencimento);
+            mensalista.setDataVencimento(vencimento.plusMonths(1));
         }
 
         return mensalistaRepo.save(mensalista);
     }
 
-
     @Transactional
     public Mensalista cadastrarMensalista(String nome, String cpf, String telefone, String placaPrincipal) {
-        // 1. Validação
         if (nome == null || nome.isBlank()) {
             throw new IllegalArgumentException("Nome é obrigatório.");
         }
@@ -99,7 +97,6 @@ public class MensalistaService {
             throw new IllegalArgumentException("Placa Principal é obrigatória.");
         }
 
-        // 2. Regras de Negócio (Campos únicos)
         if (mensalistaRepo.findByCpf(cpf).isPresent()) {
             throw new IllegalArgumentException("Já existe um mensalista com este CPF.");
         }
@@ -107,18 +104,15 @@ public class MensalistaService {
             throw new IllegalArgumentException("Já existe um mensalista com esta Placa.");
         }
 
-        // 3. Criar a nova entidade
         Mensalista novoMensalista = new Mensalista();
         novoMensalista.setNome(nome);
         novoMensalista.setCpf(cpf);
         novoMensalista.setTelefone(telefone);
         novoMensalista.setPlacaPrincipal(placaPrincipal);
 
-        // 4. Regra de Negócio: Cliente entra como PENDENTE
         novoMensalista.setStatusPagamento(StatusPagamento.PENDENTE);
-        novoMensalista.setDataVencimento(LocalDate.now()); // Vencimento é hoje
+        novoMensalista.setDataVencimento(LocalDate.now());
 
-        // 5. Salvar e retornar
         return mensalistaRepo.save(novoMensalista);
     }
 
@@ -127,9 +121,6 @@ public class MensalistaService {
         return mensalistaRepo.findByCpf(cpf);
     }
 
-    /**
-     * Método para a Opção 2 do menu: Consultar situação pela Placa.
-     */
     @Transactional(readOnly = true)
     public Optional<Mensalista> consultarPorPlaca(String placa) {
         if (placa == null || placa.isBlank()) {
@@ -139,29 +130,24 @@ public class MensalistaService {
         Optional<Mensalista> mensalistaOpt = mensalistaRepo.findByPlacaPrincipal(placa);
 
         if (mensalistaOpt.isPresent()) {
-            // Atualiza o status (Ex: se hoje > vencimento, vira PENDENTE)
             mensalistaOpt.get().atualizarStatusBaseadoNaData();
         }
 
         return mensalistaOpt;
     }
 
-    // *** NOVO MÉTODO ADICIONADO (Opção 4 do menu) ***
-    /**
-     * Busca todos os mensalistas e retorna apenas os que estão PENDENTES.
-     * Este método atualiza o status de todos os mensalistas na memória
-     * (baseado na data atual) antes de filtrar.
-     * * @return Lista de mensalistas com status PENDENTE.
-     */
-    @Transactional(readOnly = true) // Apenas lê, não salva as atualizações de status
+    @Transactional(readOnly = true)
     public List<Mensalista> buscarPendentes() {
         List<Mensalista> todos = mensalistaRepo.findAll();
 
-        // 1. Atualiza o status de todos NA MEMÓRIA para a data de hoje
-        // (Isso garante que quem venceu hoje apareça como PENDENTE)
-        todos.forEach(Mensalista::atualizarStatusBaseadoNaData);
+        // Atualiza status de todos (baseado na data atual)
+        todos.forEach(m -> {
+            // Evita NullPointerException em dados sujos
+            if (m.getDataVencimento() != null) {
+                m.atualizarStatusBaseadoNaData();
+            }
+        });
 
-        // 2. Filtra e retorna apenas os PENDENTES
         return todos.stream()
                 .filter(m -> m.getStatusPagamento() == StatusPagamento.PENDENTE)
                 .collect(Collectors.toList());
