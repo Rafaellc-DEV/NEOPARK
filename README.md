@@ -38,6 +38,11 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
 </div>
 
 ---
+## 🤝 Como Contribuir para o Projeto
+
+Para saber como contribuir, veja nossas [Diretrizes de Contribuição](CONTRIBUTING.md).
+
+---
 
 ## 👥 Equipe
 
@@ -116,6 +121,10 @@ A aplicação web será acessada exclusivamente por um operador, que fará login
 
 <details>
   <summary>🚀 Entrega 4</summary>
+
+
+  Para saber como contribuir, veja nossas [Diretrizes de Contribuição](CONTRIBUTING.md).
+
   <br/>
 </details>
 
