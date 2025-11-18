@@ -126,6 +126,22 @@ Para saber como contribuir, veja nossas [Diretrizes de Contribuição](CONTRIBUT
 <details>
   <summary>🚀 Entrega 4</summary>
 
+  <p align="center">
+  <a href="https://docs.google.com/document/d/1TrjVBh55Mznk4I32kbS4D39BCFp8K38NtsT5_IHFUf4/edit?usp=sharing">
+    <img src="https://img.shields.io/badge/Histórias-483D8B?style=for-the-badge&logo=google&logoColor=white" alt="Histórias Usuário"/>
+  </a> 
+  <a href="https://youtu.be/B1avVJ6ydRk">
+    <img src="https://img.shields.io/badge/Screencast Entrega 4 com novas histórias-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
+  </a>
+  <a href="https://youtu.be/GVOAUSt91Jc?si=zrH34aFwyZ423opJ">
+    <img src="https://img.shields.io/badge/Screencast Testes Automatizados Entrega 4-b50404?style=for-the-badge&logo=youtube&logoColor=white"/>
+  </a>
+</p>
+
+### 📄 Issues
+![Issues](prints/issues_entrega04.png)
+
+<br/>
 
   Para saber como contribuir, veja nossas [Diretrizes de Contribuição](CONTRIBUTING.md).
 
